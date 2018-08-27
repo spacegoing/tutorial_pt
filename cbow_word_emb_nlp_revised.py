@@ -25,40 +25,54 @@ for i in range(2, len(raw_text) - 2):
   context = [raw_text[i - 2], raw_text[i - 1], raw_text[i + 1], raw_text[i + 2]]
   target = raw_text[i]
   data.append((context, target))
-print(data[:5])
+  print(data[:5])
 
 
-class CBOW(nn.Module):
-
-  def __init__(self, vocab_size, embed_size, cont_size):
-    super(CBOW, self).__init__()
-    self.embeddings = nn.Embedding(vocab_size, embed_size)
-    self.linear = nn.Linear(embed_size, vocab_size)
-
-  def forward(self, inputs):
-    emb_mat = self.embeddings(inputs)
-    emb_vec = emb_mat.sum(dim=0)
-    logits = self.linear(emb_vec)
-    return nn.Softmax(logits)
+def make_context_vector(context, word_to_ix):
+  idxs = [word_to_ix[w] for w in context]
+  return torch.tensor([idxs], dtype=torch.long)
 
 
 # create your model and train.  here are some functions to help you make
 # the data ready for use by your module
 
 
-def make_context_vector(context, word_to_ix):
-  idxs = [word_to_ix[w] for w in context]
-  return torch.tensor(idxs, dtype=torch.long)
+class CBOW(nn.Module):
+
+  def __init__(self, vocab_size, embed_size):
+    super(CBOW, self).__init__()
+    self.embeddings = nn.Embedding(vocab_size, embed_size)
+    self.linear = nn.Linear(embed_size, vocab_size)
+
+  def forward(self, inputs):
+    '''
+    inputs: 3D (N,Context_Size,Embed_Size)
+      because later functions like nllloss() must input 2D mat,
+      (N,C) (samples,classes), so keep dim
+    '''
+    emb_mat = self.embeddings(inputs)
+    emb_vec = emb_mat.sum(dim=0)
+    log_probs = self.linear(emb_vec)
+    return F.log_softmax(log_probs)
 
 
-for sent, target in data:
-  model = CBOW(len(word_to_ix), EMB_SIZE, CONTEXT_SIZE)  # wrong: model in loop
+model = CBOW(len(word_to_ix), EMB_SIZE)
+optimizer = optim.SGD(model.parameters(), lr=0.001)
 
-  model.zero_grad()
-  loss_fun = F.nll_loss()  # wrong: loss in loop; use nn module
+# loss
+losses = []  # record losses
+loss_fun = nn.NLLLoss()
 
-  pred = model(ex)
-  loss = loss_fun(pred, torch.tensor(
-      word_to_ix[target], dtype=torch.longTensor)
-                 )  # wrong: dtype torch.long ; torch.tensor [[]] not []
-  loss.backward()
+for epoch in range(10):
+  total_loss = 0
+  for sent, target in data:
+    sent_ids = make_context_vector(sent, word_to_ix)
+    model.zero_grad()
+
+    pred = model(sent_ids)
+    # pred shape: (N,C)
+    loss = loss_fun(pred, torch.tensor([word_to_ix[target]], dtype=torch.long))
+    loss.backward()
+    optimizer.step()
+    total_loss += loss.item()
+  losses.append(total_loss)

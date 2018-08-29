@@ -1,0 +1,16 @@
+* Pytorch Framework
+** Data
+*** DataLoader
+
+
+
+
+** Training Stage
+*** Log Performance
+**** Timing
+- https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html#training-the-model
+- https://github.com/pytorch/tnt
+
+*** Checkpoint
+save & resume model
+https://github.com/pytorch/examples/blob/6fd43cd04f4677be005167157c848f0fefe131af/imagenet/main.py#L119-L131
